@@ -225,7 +225,7 @@
       const data = new URLSearchParams();
       data.append("timestamp", new Date().toISOString());
       data.append("response", responseText);
-      data.append("userAgent", navigator.userAgent);
+      //data.append("userAgent", navigator.userAgent);
 
       try {
         await fetch(GOOGLE_SCRIPT_URL, {
