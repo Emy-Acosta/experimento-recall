@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actividad de Memoria</title>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: white;
+      color: black;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #app {
+      width: 90%;
+      max-width: 700px;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      box-sizing: border-box;
+      padding: 24px;
+    }
+
+    .screen {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    h1,
+    p {
+      margin: 0 0 24px;
+      font-weight: normal;
+    }
+
+    h1,
+    .word {
+      font-size: 28px;
+    }
+
+    p {
+      font-size: 22px;
+      line-height: 1.4;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      font-family: Arial, sans-serif;
+      font-size: 20px;
+      color: black;
+      background: white;
+      border: 1px solid black;
+      padding: 12px;
+      box-sizing: border-box;
+      resize: vertical;
+      margin-bottom: 24px;
+    }
+
+    button {
+      font-family: Arial, sans-serif;
+      font-size: 20px;
+      color: black;
+      background: white;
+      border: 1px solid black;
+      padding: 12px 24px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: default;
+      opacity: 0.6;
+    }
+
+    @media (max-width: 600px) {
+      h1,
+      .word {
+        font-size: 26px;
+      }
+
+      p {
+        font-size: 20px;
+      }
+
+      textarea,
+      button {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main id="app"></main>
+
+  <script>
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw4KFaPbmz1ZN40ezb6FhEXuOXHc9gQlJS8aAnkpIfyavPL4Tltht-6eCKphsgHRzYX/exec";
+
+    const words = [
+      "Hostil",
+      "Inteligente",
+      "Deshonesto/a",
+      "Amable",
+      "Irresponsable",
+      "Original",
+      "Egoísta",
+      "Responsable",
+      "Cruel",
+      "Creativo/a",
+      "Impuntual",
+      "Empático/a"
+    ];
+
+    const app = document.getElementById("app");
+
+    let currentWordIndex = 0;
+    let wordTimer = null;
+    let delayTimer = null;
+
+    function clearTimers() {
+      if (wordTimer !== null) {
+        clearTimeout(wordTimer);
+        wordTimer = null;
+      }
+
+      if (delayTimer !== null) {
+        clearTimeout(delayTimer);
+        delayTimer = null;
+      }
+    }
+
+    function replaceScreen(html) {
+      app.innerHTML = "";
+      app.innerHTML = html;
+    }
+
+    function showInstructions() {
+      clearTimers();
+
+      replaceScreen(`
+        <section class="screen">
+          <h1>Instrucciones</h1>
+          <p>A continuación verá una serie de palabras. Cada palabra aparecerá automáticamente durante 3 segundos.</p>
+          <p>Preste atención a cada una.</p>
+          <button id="startButton" type="button">Comenzar</button>
+        </section>
+      `);
+
+      document.getElementById("startButton").addEventListener("click", startExperiment);
+    }
+
+    function startExperiment() {
+      clearTimers();
+      currentWordIndex = 0;
+      showNextWord();
+    }
+
+    function showNextWord() {
+      app.innerHTML = "";
+
+      if (currentWordIndex >= words.length) {
+        showMemoryDelayScreen();
+        return;
+      }
+
+      replaceScreen(`
+        <section class="screen">
+          <div class="word">${words[currentWordIndex]}</div>
+        </section>
+      `);
+
+      currentWordIndex++;
+      wordTimer = setTimeout(showNextWord, 3000);
+    }
+
+    function showMemoryDelayScreen() {
+      clearTimers();
+
+      replaceScreen(`
+        <section class="screen">
+          <p>Trate de recordar todas las palabras que pueda.</p>
+        </section>
+      `);
+
+      delayTimer = setTimeout(showResponseScreen, 10000);
+    }
+
+    function showResponseScreen() {
+      clearTimers();
+
+      replaceScreen(`
+        <section class="screen">
+          <p>Escriba todas las palabras que recuerde, sin importar el orden.</p>
+          <textarea id="responseText" aria-label="Respuesta"></textarea>
+          <button id="submitButton" type="button">Enviar</button>
+        </section>
+      `);
+
+      document.getElementById("submitButton").addEventListener("click", submitResponse);
+    }
+
+    async function submitResponse() {
+      const responseText = document.getElementById("responseText").value.trim();
+      const submitButton = document.getElementById("submitButton");
+
+      submitButton.disabled = true;
+      submitButton.textContent = "Enviando...";
+
+      const data = new URLSearchParams();
+      data.append("timestamp", new Date().toISOString());
+      data.append("response", responseText);
+      data.append("userAgent", navigator.userAgent);
+
+      try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: data.toString()
+        });
+
+        showFinalScreen();
+      } catch (error) {
+        submitButton.disabled = false;
+        submitButton.textContent = "Enviar";
+        alert("No se pudo guardar la respuesta. Revise la conexión e intente nuevamente.");
+      }
+    }
+
+    function showFinalScreen() {
+      clearTimers();
+
+      replaceScreen(`
+        <section class="screen">
+          <p>Gracias por participar. Sus respuestas han sido registradas.</p>
+        </section>
+      `);
+    }
+
+    showInstructions();
+  </script>
+</body>
+</html>
